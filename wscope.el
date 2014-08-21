@@ -311,7 +311,9 @@ cscope results buffer. If negative, the field is left-justified."
   ;; `format' of Emacs doesn't have "*s" spec.
   (let* ((short-file (strip file *wscope-cscope-file-dir*))
 		 (fmt (format "%%%ds %%s" wscope-name-line-width))
-		 (str (format fmt (format "%s[%s]" short-file line-number) line))
+		 (-str (format fmt (format "%s[%s]" short-file line-number) line))
+		 (fwidth (- (frame-width default-minibuffer-frame) 6))
+		 (str (if (> (length -str) fwidth) (concat (substring -str 0 fwidth) "...") -str))
 		 beg end)
 	(if wscope-use-face
 		(progn
