@@ -26,6 +26,7 @@
 
 (require 'grizzl)
 (require 'dash)
+(require 's)
 
 (defgroup wscope nil
   "Cscope interface for (X)Emacs.
@@ -60,6 +61,11 @@ cscope results buffer. If negative, the field is left-justified."
   :group 'wscope
   :type '(boolean))
 
+(defcustom wscope-update-sh-script nil
+  "*sh script to update cscope.out"
+  :group 'wscope
+  :type '(string))
+
 (defvar wscope-output-buffer-name "*Result*"
   "The name of the cscope output buffer.")
 
@@ -68,6 +74,9 @@ cscope results buffer. If negative, the field is left-justified."
 
 (defvar *wscope-cscope-file-dir* nil
   "the dir where cscope.out is at")
+
+(defvar *wscope-query-command* nil
+  "as the var name")
 
 (defface wscope-function-face
   '((((class color) (background dark))
@@ -264,9 +273,31 @@ cscope results buffer. If negative, the field is left-justified."
   (when (= 0 (mod n 1000))
 	(message (format "Indexing (%d/%d)" n total))))
 
+(defun toggle-truncate-lines-no-msg (&optional arg)
+  "This func is from emacs source: lisp/simple.el, with message at end removed.
+   Toggle truncating of long lines for the current buffer.
+When truncating is off, long lines are folded.
+With prefix argument ARG, truncate long lines if ARG is positive,
+otherwise fold them.  Note that in side-by-side windows, this
+command has no effect if `truncate-partial-width-windows' is
+non-nil."
+  (interactive "P")
+  (setq truncate-lines
+        (if (null arg)
+            (not truncate-lines)
+          (> (prefix-numeric-value arg) 0)))
+  (force-mode-line-update)
+  (unless truncate-lines
+    (let ((buffer (current-buffer)))
+      (walk-windows (lambda (window)
+                      (if (eq buffer (window-buffer window))
+                          (set-window-hscroll window 0)))
+                    nil t)))
+  )
+
 (defun -wscope-query (command)
-  (let ((proc (get-process "wscope")) outbuf
-		)
+  (let ((proc (get-process "wscope")) outbuf)
+	(setq *wscope-query-command* command)
 	(setq *wscope-result-cache* nil)
 	(with-current-buffer (process-buffer proc)
 	  (goto-char (point-max))
@@ -279,7 +310,7 @@ cscope results buffer. If negative, the field is left-justified."
 	(let* ((show-tags (-map 'car *wscope-result-cache*))
 		   (tagshow-index (grizzl-make-index show-tags :progress-fn #'wscope-report-progress))
 		   (select-tag (minibuffer-with-setup-hook
-						   (lambda () ())
+						   (lambda () (toggle-truncate-lines-no-msg))
 						 (grizzl-completing-read "Show text: TODO" tagshow-index))))
 	  (goto-file-and-line select-tag)))
   )
@@ -292,11 +323,25 @@ cscope results buffer. If negative, the field is left-justified."
 	(find-file file-name)
 	(goto-line (read line-number))
 	(if wscope-check-cscope
-		(if (string-match (nth 1 (split-string select-tag " *")) (thing-at-point 'line))
+		(if ((lambda (x y) (and (> (length x) 0) (s-ends-with? x y))) (s-trim (thing-at-point 'line)) select-tag)
 			nil
-		  (message "Seems cscope.out is out of date, maybe you should do an update"))
+		  (progn
+			(message select-tag)
+			(message (thing-at-point 'line))
+			(if wscope-update-sh-script
+				(progn
+				  (update-cscope-data)
+				  (if (get-process "wscope") (kill-process (get-process "wscope"))))
+										;(wscope-query *wscope-query-command*))
+			  (message "Seems cscope.out is out of date, maybe you should do an update"))))
 	  nil))
   )
+
+(defun update-cscope-data ()
+  (message "cscope.out is out of data. Start updating...")
+  (call-process "sh" (concat *wscope-cscope-file-dir* wscope-update-sh-script))
+  (message "Done!")
+)
 
 (defun strip (long-string pre-string)
   (if (string-prefix-p pre-string long-string)
@@ -311,9 +356,7 @@ cscope results buffer. If negative, the field is left-justified."
   ;; `format' of Emacs doesn't have "*s" spec.
   (let* ((short-file (strip file *wscope-cscope-file-dir*))
 		 (fmt (format "%%%ds %%s" wscope-name-line-width))
-		 (-str (format fmt (format "%s[%s]" short-file line-number) line))
-		 (fwidth (- (frame-width default-minibuffer-frame) 6))
-		 (str (if (> (length -str) fwidth) (concat (substring -str 0 fwidth) "...") -str))
+		 (str (format fmt (format "%s[%s]" short-file line-number) line))
 		 beg end)
 	(if wscope-use-face
 		(progn
