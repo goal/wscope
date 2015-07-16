@@ -1,8 +1,8 @@
 ;; Copyright © 2014 WANG Yanjin
 ;;
 ;; Author:   WANG Yanjin <wyj1046#gmail.com>
-;; URL:      http://github.com/goal/tagshow
-;; Version:  0.1.2
+;; URL:      http://github.com/goal/wscope
+;; Version:  0.1.3
 ;; Keywords: tags
 
 ;; This file is NOT part of GNU Emacs.
@@ -199,15 +199,27 @@ cscope results buffer. If negative, the field is left-justified."
 	(message "What to find?"))
   )
 
-(defun wscope-find-this-text-string ()
+(defun wscope-find-text-string (symbol)
   "Locate where a text string occurs."
+  (setq query-command (concat "4" symbol "\n") )
+  (setq wscope-action-message (format "Find this text string: %s" symbol))
+  (wscope-query query-command)
+  )
+
+(defun wscope-find-text-string-from-input (symbol)
+  "Locate a text string from input"
+  (interactive (wscope-interactive "Find this text string: "))
+  (if symbol
+	  (wscope-find-text-string symbol)
+	(message "What to find?"))
+  )
+
+(defun wscope-find-this-text-string ()
+  "Locate current text string"
   (interactive)
   (setq symbol (current-word))
   (if symbol
-	  (progn
-		(setq query-command (concat "4" symbol "\n") )
-		(setq wscope-action-message (format "Find this text string: %s" symbol))
-		(wscope-query query-command))
+	  (wscope-find-text-string symbol)
 	(message "What to find?"))
   )
 
@@ -276,11 +288,11 @@ cscope results buffer. If negative, the field is left-justified."
 (defun toggle-truncate-lines-no-msg (&optional arg)
   "This func is from emacs source: lisp/simple.el, with message at end removed.
    Toggle truncating of long lines for the current buffer.
-When truncating is off, long lines are folded.
-With prefix argument ARG, truncate long lines if ARG is positive,
-otherwise fold them.  Note that in side-by-side windows, this
-command has no effect if `truncate-partial-width-windows' is
-non-nil."
+   When truncating is off, long lines are folded.
+   With prefix argument ARG, truncate long lines if ARG is positive,
+   otherwise fold them.  Note that in side-by-side windows, this
+   command has no effect if `truncate-partial-width-windows' is
+   non-nil."
   (interactive "P")
   (setq truncate-lines
         (if (null arg)
@@ -371,7 +383,7 @@ non-nil."
 		  ))
 	str))
 
-(defun wscope-process_one_chunk (text-start text-end)
+(defun wscope-process-one-chunk (text-start text-end)
   (with-current-buffer "*wscope*"
 	(setq stuff (buffer-substring-no-properties text-start text-end))
 	(while (and stuff
@@ -433,7 +445,7 @@ non-nil."
 	  )
 	(while (and (> (- text-end text-start) 0) (<= text-end text-max))
 
-	  (wscope-process_one_chunk text-start text-end)
+	  (wscope-process-one-chunk text-start text-end)
 
 	  (setq text-start (+ text-end 1))
 	  (if (>= (- text-max text-start) 5000)
