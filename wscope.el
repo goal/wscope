@@ -1,8 +1,8 @@
-;; Copyright © 2014 WANG Yanjin
+;; Copyright © 2015 WANG Yanjin
 ;;
 ;; Author:   WANG Yanjin <wyj1046#gmail.com>
 ;; URL:      http://github.com/goal/wscope
-;; Version:  0.1.3
+;; Version:  0.1.4
 ;; Keywords: tags
 
 ;; This file is NOT part of GNU Emacs.
@@ -61,10 +61,10 @@ cscope results buffer. If negative, the field is left-justified."
   :group 'wscope
   :type '(boolean))
 
-(defcustom wscope-update-sh-script nil
+(defcustom wscope-data-auto-update t
   "*sh script to update cscope.out"
   :group 'wscope
-  :type '(string))
+  :type '(boolean))
 
 (defvar wscope-output-buffer-name "*Result*"
   "The name of the cscope output buffer.")
@@ -351,8 +351,9 @@ cscope results buffer. If negative, the field is left-justified."
 
 (defun update-cscope-data ()
   (message "cscope.out is out of data. Start updating...")
-  (call-process "sh" (concat *wscope-cscope-file-dir* wscope-update-sh-script))
-  (message "Done!")
+  (cd *wscope-cscope-file-dir*)
+  (start-process "cscope-update" "*Messages*" "cscope" "-Rbkq")
+  (message "cscope data file update done!")
 )
 
 (defun strip (long-string pre-string)
