@@ -340,7 +340,7 @@ cscope results buffer. If negative, the field is left-justified."
 		  (progn
 			(message select-tag)
 			(message (thing-at-point 'line))
-			(if wscope-update-sh-script
+			(if wscope-data-auto-update
 				(progn
 				  (update-cscope-data)
 				  (if (get-process "wscope") (kill-process (get-process "wscope"))))
