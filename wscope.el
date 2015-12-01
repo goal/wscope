@@ -78,6 +78,9 @@ cscope results buffer. If negative, the field is left-justified."
 (defvar *wscope-query-command* nil
   "as the var name")
 
+(defvar *wscope-goto-history* '()
+  "history jump")
+
 (defface wscope-function-face
   '((((class color) (background dark))
 	 (:foreground "cyan"))
@@ -105,6 +108,14 @@ cscope results buffer. If negative, the field is left-justified."
 	(t (:bold nil)))
   "Face used to highlight the rest of line in the *wscope* buffer."
   :group 'wscope)
+
+(defun update-wscope-history (new-history)
+  ;; limit history records
+  (if (> (length *wscope-goto-history*) 10)
+      (-remove-at 0 *wscope-goto-history*)
+    )
+  (setq *wscope-goto-history* (-concat *wscope-goto-history* (list new-history)))
+  )
 
 (defun wscope-auto-init (dir depth)
   (if (< depth 0)
@@ -271,6 +282,12 @@ cscope results buffer. If negative, the field is left-justified."
 	(message "What to find?"))
   )
 
+(defun wscope-jump-hostory ()
+  "jump between wscope goto history"
+  (interactive)
+  (wscope-query-history)
+  )
+
 (defun wscope-query (command)
   (if (get-process "wscope")
 	  (-wscope-query command)
@@ -320,11 +337,33 @@ cscope results buffer. If negative, the field is left-justified."
 	  (wscope-process-output))
 
 	(let* ((show-tags (-map 'car *wscope-result-cache*))
-		   (tagshow-index (grizzl-make-index show-tags :progress-fn #'wscope-report-progress))
+		   (wscope-index (grizzl-make-index show-tags :progress-fn #'wscope-report-progress))
 		   (select-tag (minibuffer-with-setup-hook
 						   (lambda () (toggle-truncate-lines-no-msg))
-						 (grizzl-completing-read "Show text: TODO" tagshow-index))))
+						 (grizzl-completing-read "Show text: TODO" wscope-index))))
 	  (goto-file-and-line select-tag)))
+  )
+
+(defun wscope-query-history ()
+  (let* ((show-tags (-map 'car *wscope-goto-history*))
+         (wscope-index (grizzl-make-index show-tags :progress-fn #'wscope-report-progress))
+         (select-tag (minibuffer-with-setup-hook
+                         (lambda () (toggle-truncate-lines-no-msg))
+                       (grizzl-completing-read "Show text: TODO" wscope-index))))
+    (goto-history-file-and-line select-tag))
+  )
+
+(defun -goto-file-and-line (file-name line-number)
+  (find-file file-name)
+  (goto-line (read line-number))
+  )
+
+(defun goto-history-file-and-line (select-tag)
+  (let* ((item (car (-select (lambda (x) (equal (car x) select-tag)) *wscope-goto-history*)))
+         (file-name (nth 1 item))
+         (line-number (nth 2 item))
+         )
+    (-goto-file-and-line file-name line-number))
   )
 
 (defun goto-file-and-line (select-tag)
@@ -332,14 +371,14 @@ cscope results buffer. If negative, the field is left-justified."
 		 (file-name (nth 1 item))
 		 (line-number (nth 2 item))
 		 )
-	(find-file file-name)
-	(goto-line (read line-number))
+    (update-wscope-history item)
+    (-goto-file-and-line file-name line-number)
 	(if wscope-check-cscope
 		(if ((lambda (x y) (and (> (length x) 0) (s-ends-with? x y))) (s-trim (thing-at-point 'line)) select-tag)
 			nil
 		  (progn
-			(message select-tag)
-			(message (thing-at-point 'line))
+			;;(message select-tag)
+			;;(message (thing-at-point 'line))
 			(if wscope-data-auto-update
 				(progn
 				  (update-cscope-data)
