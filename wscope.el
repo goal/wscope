@@ -2,7 +2,7 @@
 ;;
 ;; Author:   WANG Yanjin <wyj1046#gmail.com>
 ;; URL:      http://github.com/goal/wscope
-;; Version:  0.1.4
+;; Version:  0.1.5
 ;; Keywords: tags
 
 ;; This file is NOT part of GNU Emacs.
@@ -111,10 +111,12 @@ cscope results buffer. If negative, the field is left-justified."
 
 (defun update-wscope-history (new-history)
   ;; limit history records
-  (if (> (length *wscope-goto-history*) 10)
-      (-remove-at 0 *wscope-goto-history*)
-    )
-  (setq *wscope-goto-history* (-concat *wscope-goto-history* (list new-history)))
+  (if (not (-any? (lambda (x) (equal new-history x)) *wscope-goto-history*))
+      (progn
+        (if (> (length *wscope-goto-history*) 10)
+            (-remove-at 0 *wscope-goto-history*)
+          )
+        (setq *wscope-goto-history* (-concat *wscope-goto-history* (list new-history)))))
   )
 
 (defun wscope-auto-init (dir depth)
