@@ -1,8 +1,8 @@
-;; Copyright © 2015 WANG Yanjin
+;; Copyright © 2015-2016 WANG Yanjin
 ;;
 ;; Author:   WANG Yanjin <wyj1046#gmail.com>
 ;; URL:      http://github.com/goal/wscope
-;; Version:  0.1.5
+;; Version:  0.1.6
 ;; Keywords: tags
 
 ;; This file is NOT part of GNU Emacs.
@@ -12,17 +12,17 @@
 ;; Licensed under the same terms as Emacs.
 
 ;; some source from cscope:
-;; 0    {"Find this", "C symbol",           findsymbol},
-;; 1    {"Find this", "global definition",      finddef},
-;; 2    {"Find", "functions called by this function",   findcalledby},
-;; 3    {"Find", "functions calling this function", findcalling},
-;; 4    {"Find this", "text string",            findstring},
-;; 5    {"Change this", "text string",          findstring},
-;; 6    {"Find this", "egrep pattern",          findregexp},
-;; 7    {"Find this", "file",               findfile},
-;; 8    {"Find", "files #including this file",      findinclude},
-;; 9    {"Find", "assignments to this symbol",      findassign},
-;; 10    {"Find all", "function definitions",        findallfcns},   /* samuel only */
+;; 0    {"Find this",   "C symbol",                          findsymbol},
+;; 1    {"Find this",   "global definition",                 finddef},
+;; 2    {"Find",        "functions called by this function", findcalledby},
+;; 3    {"Find",        "functions calling this function",   findcalling},
+;; 4    {"Find this",   "text string",                       findstring},
+;; 5    {"Change this", "text string",                       findstring},
+;; 6    {"Find this",   "egrep pattern",                     findregexp},
+;; 7    {"Find this",   "file",                              findfile},
+;; 8    {"Find",        "files #including this file",        findinclude},
+;; 9    {"Find",        "assignments to this symbol",        findassign},
+;; 10   {"Find all",    "function definitions",              findallfcns},   /* samuel only */
 
 (require 'grizzl)
 (require 'dash)
@@ -65,6 +65,11 @@ cscope results buffer. If negative, the field is left-justified."
   "*sh script to update cscope.out"
   :group 'wscope
   :type '(boolean))
+
+(defcustom wscope-data-up-depth 3
+  "*Find cscope data with custom max up depth"
+  :group 'wscope
+  :type '(integer))
 
 (defvar wscope-output-buffer-name "*Result*"
   "The name of the cscope output buffer.")
@@ -294,7 +299,7 @@ cscope results buffer. If negative, the field is left-justified."
   (if (get-process "wscope")
 	  (-wscope-query command)
 	(progn
-	  (if (wscope-auto-init default-directory 3)
+	  (if (wscope-auto-init default-directory wscope-data-up-depth)
 		  (-wscope-query command)
 		nil)))
   )
